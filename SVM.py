@@ -5,7 +5,6 @@ SVM
 datatype:mat
 
 """
-'''由于每次aj 都是随机抽取的，所以，每次得到的值都是不同的'''
 
 import pandas as pd
 from numpy import *
