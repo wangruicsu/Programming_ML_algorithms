@@ -202,8 +202,8 @@ def calW(alpha,dataMat,labelMat):
     
     
 if __name__ == '__main__':
-    filename_train = "/Users/raine/Desktop/train_data.txt"  
-    filename_test = "/Users/raine/Desktop/test_data.txt"  
+    filename_train = "train_data.txt"  
+    filename_test = "test_data.txt"  
     
     trainMat,trainLabel = loadData(filename_train)
     testMat,testLabel = loadData(filename_test)
