@@ -7,7 +7,9 @@ datatype:mat
 """
 '''由于每次aj 都是随机抽取的，所以，每次得到的值都是不同的'''
 
+import pandas as pd
 from numpy import *
+from collections import Counter
 
 # 载入数据，数据类型：二维矩阵 mat
 def loadData(filename): 
@@ -176,7 +178,6 @@ def SMO(dataMat,classLabel,C,toler,maxIters):
         isAlphaChanged = 0
         if wholeSet:
             for i in range(DA.m):
-    #            print("挑选第 %d 个参数" %i)
                 isAlphaChanged += innerLoop(DA,i)
                 print("fullset, iters: %d, isAlphaChanged: %d" %(iters, isAlphaChanged))
             iters += 1
@@ -211,14 +212,20 @@ if __name__ == '__main__':
     alphas,b = SMO(trainMat, trainLabel, 1, 0.001, 4000) #通过SMO算法得到b和alpha
     w = calW(alphas,trainMat,trainLabel)
     
+    # 预测
+    pre_y = [] #预测得到的误差
     pre_Err = []
     for i in range(shape(testMat)[0]):
-        pre_Err.append((testMat[i]*w+b-(testLabel.T)[i])[0,0])
-    abs_pre_Err = pre_Err
-    abs_pre_Err =[abs(i) for i in abs_pre_Err]
-    print("b",b)
-    print("alphas",alphas.T)
-    print(sum(abs_pre_Err))
+        pre_yi = (testMat[i]*w+b)[0,0]
+        if pre_yi > 0: pre_yi = 1
+        else: pre_yi = -1
+        pre_y.append(pre_yi)
+    for i in range(len(pre_y)):
+        pre_Err.append((pre_y[i] - (testLabel.T)[i])[0,0])
+    result = pd.value_counts(pre_Err) # 分类误差情况
+    print("\n b \n",b)
+    print("\n alphas \n",alphas.T)
+    print("\n 预测结果误差为 \n", result)
     
-    # 预测效果是相当的差，看后面加上非线性核函数后怎么样
-    #TODO：为什么每次挑选到的 aj 基本一样，为什么 L==H
+    # 预测效果一般，看后面加上非线性核函数后怎么样
+    # TODO：为什么每次挑选到的 aj 基本一样，为什么 L==H
