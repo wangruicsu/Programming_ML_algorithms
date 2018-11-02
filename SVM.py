@@ -51,7 +51,6 @@ def calAlphaJ(ai,aj,yi,yj,Ei,Ej,xi,xj):
     Kjj = 1
     Kij = (yi*yj*xi*xj.T)[0,0]
     n = Kii+Kjj-2*Kij
-    print(n)
     aj_new_unc = aj+yj*(Ei-Ej)/n
     return aj_new_unc
 
@@ -92,12 +91,16 @@ def selectJ(DA,i,Ei):
         Ej = DA.errCache[j,1]
         if i==j:
             j = sortE[1,0]
-            Ej = DA.errCache[j,1]     
+            Ej = DA.errCache[j,1]  
+        print("vaildErrCache > 1",j)
     # 在第一次挑选 aj 时，除了 Ei，其他的 Ex 还都是0，所以随机挑选
     else:
         while(j==i):
-            j =  int(random.uniform(0,DA.m))
+            print(DA.m)
+            j =  int(random.randint(0,DA.m) )
         Ej = calErr(DA,j)
+        print("随机挑选 j",j)
+    print("select j",j)
     return Ej,j
 
 '''选择第二个 alpha 即 j
@@ -120,7 +123,8 @@ def innerLoop(DA,i):
     if case1 or case2 and case3 and case4:
         # 选取 aj
         Ej,j = selectJ(DA,i,Ei)
-    
+        print(" i：",i,"j：",j)
+        
         aj = DA.alpha[j,0] # 相当于copy一份原数据，仅用于直观的计算不影响原数据。值为标量。
         yj = DA.labelMat[j,0]
         xi = DA.X[i,:]
@@ -135,7 +139,8 @@ def innerLoop(DA,i):
         if (L==H) and (DA.alpha[j,0]!=L):
             return 0
         # 内环退出条件②，aj 更新量过少
-        if (DA.alpha[j,0] -aj)< 0.00001:
+        print(" yi",yi,"\n","yj",yj,"\n","L:",L,"\n","H:",H,"\n","aj_new:",DA.alpha[j,0],"\n","ai",ai,"\n","aj:",aj,"\n","ai_new-aj",DA.alpha[j,0] -aj,"\n")
+        if abs(DA.alpha[j,0] -aj)< 0.00001:
             return 0
         
         #更新 ai，Ei
@@ -166,18 +171,36 @@ def SMO(dataMat,classLabel,C,toler,maxIters):
     DA = dataStruct(dataMat,classLabel.T,C,toler)
     iters = 0
     isAlphaChanged = 0  # 当 参数a 没有更新时就退出循环
-    wholeSet = 1
+    wholeSet = True
     while((iters < maxIters) and (isAlphaChanged or wholeSet)):
-        wholeSet = 0
         isAlphaChanged = 0
-        for i in range(DA.m):
-#            print("挑选第 %d 个参数" %i)
-            isAlphaChanged += innerLoop(DA,i)
+        if wholeSet:
+            for i in range(DA.m):
+    #            print("挑选第 %d 个参数" %i)
+                isAlphaChanged += innerLoop(DA,i)
+                print("fullset, iters: %d, isAlphaChanged: %d" %(iters, isAlphaChanged))
             iters += 1
-#            print("fullset, iters: %d, isAlphaChanged: %d" %(iters, isAlphaChanged))
+        else:
+            notBound = nonzero((DA.alpha.A > 0)*(DA.alpha.A < C))[0] # 取 0<a<C 的索引 
+            for i in notBound:
+                isAlphaChanged += innerLoop(DA,i)
+                print("not bound, iters: %d, isAlphaChanged: %d" %(iters, isAlphaChanged))
+            iters += 1
+        if wholeSet: wholeSet = False
+        elif(isAlphaChanged == 0): wholeSet = True
+        print("iteration number: %d" %iters)
     return DA.alpha,DA.b    
 
-
+def calW(alpha,dataMat,labelMat):
+    X = dataMat
+    y = labelMat.T
+    m,n = shape(X)
+    w = zeros((n,1))
+    for i in range(m):
+        w += multiply(alpha[i]*y[i],X[i,:].T)
+    return mat(w)
+    
+    
 if __name__ == '__main__':
     filename_train = "/Users/raine/Desktop/train_data.txt"  
     filename_test = "/Users/raine/Desktop/test_data.txt"  
@@ -185,13 +208,17 @@ if __name__ == '__main__':
     trainMat,trainLabel = loadData(filename_train)
     testMat,testLabel = loadData(filename_test)
     
-    alphas,b = SMO(trainMat, trainLabel, 200, 0.0001, 10000) #通过SMO算法得到b和alpha
-    print(b)
-    print(alphas)
-    print(count_nonzero(alphas),count_nonzero(alphas)/shape(alphas)[0])
+    alphas,b = SMO(trainMat, trainLabel, 1, 0.001, 4000) #通过SMO算法得到b和alpha
+    w = calW(alphas,trainMat,trainLabel)
+    
     pre_Err = []
-    for i in range(shape(trainMat)[0]):
-        fxi = float(multiply(alphas,trainLabel.T).T*trainMat*(testMat[i,:].T)) + b
-        Ei = fxi - float((testLabel.T)[i,:]) 
-        pre_Err.append([fxi,Ei])
-    print(pre_Err)
+    for i in range(shape(testMat)[0]):
+        pre_Err.append((testMat[i]*w+b-(testLabel.T)[i])[0,0])
+    abs_pre_Err = pre_Err
+    abs_pre_Err =[abs(i) for i in abs_pre_Err]
+    print("b",b)
+    print("alphas",alphas.T)
+    print(sum(abs_pre_Err))
+    
+    # 预测效果是相当的差，看后面加上非线性核函数后怎么样
+    #TODO：为什么每次挑选到的 aj 基本一样，为什么 L==H
