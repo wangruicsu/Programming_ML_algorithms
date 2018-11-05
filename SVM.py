@@ -1,14 +1,28 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-SVM
-datatype:mat
+机器学习算法：SVM
+数据集数据类型：:mat
+
+done：
+完成：自写线性核函数的 SVM（也即是没有核函数）
+
+对比：sklearn 的 linear 核函数、rbf 核函数
+ ------------------------------------
+| 核函数                  |      正确率|
+ ------------------------------------
+|自编 SVM 线性核函数       |       66% |
+|sklearn 的 linear 核函数 |       31% |
+|sklearn 的 rbf 核函数    |       90% |
+ ------------------------------------
 
 """
 
 import pandas as pd
+import numpy as np
 from numpy import *
 from collections import Counter
+from sklearn.svm import SVC
 
 # 载入数据，数据类型：二维矩阵 mat
 def loadData(filename): 
@@ -140,7 +154,7 @@ def innerLoop(DA,i):
         if (L==H) and (DA.alpha[j,0]!=L):
             return 0
         # 内环退出条件②，aj 更新量过少
-        print(" yi",yi,"\n","yj",yj,"\n","L:",L,"\n","H:",H,"\n","aj_new:",DA.alpha[j,0],"\n","ai",ai,"\n","aj:",aj,"\n","ai_new-aj",DA.alpha[j,0] -aj,"\n")
+        print(" yi",yi,"\n","yj",yj,"\n","L:",L,"\n","H:",H,"\n",'aj_new_unc',aj_new_unc,"\n","aj_new:",DA.alpha[j,0],"\n","ai",ai,"\n","aj:",aj,"\n","ai_new-aj",DA.alpha[j,0] -aj,"\n")
         if abs(DA.alpha[j,0] -aj)< 0.00001:
             return 0
         
@@ -208,7 +222,7 @@ if __name__ == '__main__':
     trainMat,trainLabel = loadData(filename_train)
     testMat,testLabel = loadData(filename_test)
     
-    alphas,b = SMO(trainMat, trainLabel, 1, 0.001, 4000) #通过SMO算法得到b和alpha
+    alphas,b = SMO(trainMat, trainLabel, 0.8, 0.001, 4000) #通过SMO算法得到b和alpha
     w = calW(alphas,trainMat,trainLabel)
     
     # 预测
@@ -224,7 +238,34 @@ if __name__ == '__main__':
     result = pd.value_counts(pre_Err) # 分类误差情况
     print("\n b \n",b)
     print("\n alphas \n",alphas.T)
-    print("\n 预测结果误差为 \n", result)
-    
-    # 预测效果一般，看后面加上非线性核函数后怎么样
-    # TODO：为什么每次挑选到的 aj 基本一样，为什么 L==H
+    print("\n 我的预测结果误差为 \n", result)
+    # TODO：
+    # 为什么每次挑选到的 aj 基本一样？当然了，大部分的 a 对应的样本不是支持向量，极少数对应于支持向量 x的 a 才有值，才会被选择更新
+    # 为什么 L==H 总是成立
+    '''调用sklearn 库作对比'''
+    svm_linear = SVC(C = 1.0,kernel='linear',tol = 0.001,max_iter=4000)
+    svm_rbf = SVC(C = 1.0,kernel='rbf',tol = 0.001,max_iter=4000)
+
+    # 处理trainLabel的 shape
+    z = trainLabel.T
+    trainLabel_array = []
+    for i in range(len(z)):
+        trainLabel_array.append(z[i,0])
+    trainLabel_array = np.array(trainLabel_array)
+    # 处理testLabel的 shape
+    z = testLabel.T
+    testLabel_array = []
+    for i in range(len(z)):
+        testLabel_array.append(z[i,0])
+    testLabel_array = np.array(testLabel_array)
+    # SVM 进行预测
+    svm_linear.fit(trainMat, trainLabel_array)
+    svm_linear_pred = svm_linear.predict(testMat)
+    pre_Err_svm_linear = svm_linear_pred - testLabel_array
+    result_svm_linear = pd.value_counts(pre_Err_svm_linear)
+    print("\n sklraen linear 的预测结果误差为 \n", result_svm_linear)
+    svm_rbf.fit(trainMat, trainLabel_array)
+    svm_rbf_pred = svm_rbf.predict(testMat)
+    pre_Err_svm_rbf = svm_rbf_pred - testLabel_array
+    result_svm_rbf = pd.value_counts(pre_Err_svm_rbf)
+    print("\n sklraen rbf 的预测结果误差为 \n", result_svm_rbf)
