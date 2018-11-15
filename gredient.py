@@ -158,8 +158,50 @@ def demo3_GD_decay():
             plt.scatter(x, func(x), c=color[i], s=size)
             plt.legend(loc=0)
     plt.show()
-    
+
+def Adagrad(x_start, df, epochs, lr):
+    """
+    Adagrad
+    """
+    xs = np.zeros(epochs+1)
+    x = x_start
+    xs[0] = x
+    grad_squared = 0
+    for i in range(epochs):
+        dx = df(x)
+#        print(dx)
+        grad_squared += dx * dx
+        v = - dx * lr/(np.sqrt(grad_squared) + 1e-7)
+        x += v
+        xs[i+1] = x
+#    print(xs)
+    return xs #x在每次迭代后的位置（包括起始点），长度为epochs+1
+
+def demo4_Adagrad():
+    '''画图：梯度下降法'''
+    line_x = np.linspace(-9, 4, 100)
+    line_y = func(line_x)
+    plt.figure('Gradient Desent: Learning Rate',figsize = (10,10))
+
+    x_start = -5
+    epochs = 5
+
+    lr = [0.1, 0.3, 0.9]
+
+    color = ['r', 'g', 'y']
+    size = np.ones(epochs+1) * 10
+    size[-1] = 70
+    for i in range(len(lr)):
+        x = Adagrad(x_start, dfunc, epochs, lr=lr[i])
+        plt.subplot(1, 3, i+1)
+        plt.plot(line_x, line_y, c='b')
+        plt.plot(x, func(x), c=color[i], label='lr={}'.format(lr[i]))
+        plt.scatter(x, func(x), c=color[i])
+        plt.legend()
+    plt.show()
+   
 if __name__ == '__main__':
     demo1_GD_lr()  
     demo2_GD_momentum()
     demo3_GD_decay()
+    demo4_Adagrad()
