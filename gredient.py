@@ -2,14 +2,9 @@
 # -*- coding: utf-8 -*-
 """
 Created on Thu Nov 15 09:43:07 2018
-
-@author: raine
 """
 
-import numpy as np
-import matplotlib.pyplot as plt
-
-'''选择函数：三次三次函数（有鞍点）
+'''选择函数：三次函数（有鞍点）
 @param: x_start: x的起始点
 @param: df: 目标函数的一阶导函数
 @param: epochs: 迭代周期
@@ -17,6 +12,11 @@ import matplotlib.pyplot as plt
 @param: momentum: 冲量
 @param: decay: 学习率衰减因子
 '''
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+
 # 目标函数:y=x^2
 def func(x):
 #    return x*x
