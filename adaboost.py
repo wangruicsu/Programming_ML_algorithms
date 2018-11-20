@@ -35,44 +35,54 @@ def loadData():
     y = [1,1,1,-1,-1,-1,1,1,1,-1]
     return x, y #返回数据特征和数据类别
 
-# 基学习器
 def get_Gmx(x,y,D,fx):
-#    print(D)
-    Gmx_all = []
-    Gmxi_not_yi = []
-    em = []
-    pred = []
-#    item = 0
-    pred = []
+    """
+    函数功能：学习新的分类器
 
-    for i in range(len(x) - 1):
-        item = 0
-        Gmx_all.append((x[i] + x[i+1])/2.0)
-        if fx:
-#            pred = [1]*int(math.ceil(Gmx_all[i])) + [-1]*int(len(x) - math.ceil(Gmx_all[i]))
-            for j in range(len(fx)):
-                am = fx[j]
-                item = [1]*int(math.ceil(am)) + [-1]*int(len(x) - math.ceil(am))
-                pred_am = [am*k for k in item]
-                pred = list(map(lambda x: x[0]+x[1], zip(pred, pred_am)))
-        else:
-            pred = [1]*int(math.ceil(Gmx_all[i])) + [-1]*int(len(x) - math.ceil(Gmx_all[i]))
-        Gmxi_not_yi = list(map(lambda x: x[0]-x[1], zip(y, pred)))
-#        print(Gmxi_not_yi)
-        item1 = 0
-        for n in range(len(D)):
-            if Gmxi_not_yi[n] != 0: 
-                item1 += D[n]
-        em.append(item1)
-    # 基分类器
-    print(em)
-    Gmx = Gmx_all[em.index(min(em))]
-    # 计算基学习器系数 am
-    am = 1/2 * math.log((1-min(em))/min(em))
-    # 计算该基学习器的预测结果，用于更新数据权值
-    y_Gmx = [1]*int(math.ceil(Gmx)) + [-1]*int(len(x) - math.ceil(Gmx))
+    @param:x
+    @param:y
+    @param:D
+    @param:fx 已有分类器，格式[[a1,G1],...,[am,Gm]]
+    """
+    # 学习新的分类器
+    gmx = []  #所有可能的基学习器
+    pred_new = [0]*len(y) # 新分类器的预测结果
+    pred_new_base = [] #新基学习器的预测结果
+    err_base = []
+    for j in range(len(x) - 1):
+        gmx.append(0.5*(x[j] + x[j+1]))
+        pred_new_base = [1]*int(math.ceil(gmx[j])) + [-1]*int(len(x) - math.ceil(gmx[j]))
+#        pred_new = list(map(lambda x: x[0]+x[1], zip(pred_old, pred_new_base)))
 
-    return am, Gmx,y_Gmx
+        # 预测误差em为预测错误项的权重值之和。预测结果和 y 相乘，为-1的元素（异号）即代表着预测错误
+        compare_pred_y = list(map(lambda: x[0]*x[1], zip(pred_new_base,y)))
+        # 根据err_list 为 -1的元素的索引，取得对应权重 D 的值并求和
+        err = 0
+        for k in compare_pred_y:
+            if k==-1:err += D[k]
+        # 如果直接找到了分类错误为0的基分类器就不再往下找了
+        if not err: break
+        # 更新基学习器的误差 list
+        err_base.append(err)
+    
+    Gmx =  gmx[err_base.index(min(err_base))]  #新的基学习器 Gmx，误差err_base中最小元素的索引就对应着 gmx 中的最优分类器
+    em = min(err_base) # 新的基分类器的误差
+#    if em==0:
+#        return am, Gmx,y_Gmx
+    am_new = 1/2 * math.log((1-min(em))/min(em))
+    
+    fx_new.append([am_new,Gmx]) # 新分类器
+    
+    # 计算新分类的预测结果
+    pred_fx_new = [0]*len(y)
+    pred_Gm = []#每一个基学习器的预测结果
+    # 计算每一个已有的基学习器预测结果pred_am 并和 已有的分类器 fx 预测结果pred_fx 累加
+    # TODO
+    for i in range(len(fx)):
+        pred_Gm = [fx[i][0]]*int(math.ceil(fx[i][1])) + [-fx[i][0]]*int(len(x) - math.ceil(fx[i][1]))
+        pred_fx_new = list(map(lambda x: x[0]+x[1], zip(pred_fx_new, pred_Gm)))
+        
+    return fx_new,pred_fx_new
 
 # 更新新的 数据权值 D
 def calW(D_old,am,y,y_Gmx):
@@ -97,11 +107,11 @@ def AdaBoost(x,y,maxIterNum,errorThreshold):
     Gx = [0]*len(x)
     fx = []
     for i in range(maxIterNum):
-#        print(D)
+        print(D)
         am, Gmx,y_Gmx = get_Gmx(x,y,D,fx)
         fx.append(am)
         
-        Gmx_all.append(['am:',am,'Gmx: ',Gmx])
+        Gmx_all.append([am,Gmx])
         
         amGmx = [am*j for j in y_Gmx]
         #更新的分类器 的 分类误差
@@ -110,6 +120,7 @@ def AdaBoost(x,y,maxIterNum,errorThreshold):
         fx_err = 1 - list(map(lambda x: x[0]-x[1], zip(y, Gx_sign))).count(0)/len(x)
         print(fx_err)
         if fx_err < errorThreshold:break
+        print(D,am,y,y_Gmx)
     
         D = calW(D,am,y,y_Gmx)
         
