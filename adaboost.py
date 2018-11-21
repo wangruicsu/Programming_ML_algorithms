@@ -2,19 +2,9 @@
 # -*- coding: utf-8 -*-
 """
 机器学习算法：adaboost
-数据集数据类型：:list
 李航机器学习：例子8.1
 
-| --------------------------------------------------------|
-| Adaboost                                                |
-| ---------|----------------------|-----------------------|
-|  param   |  取值                 |  说明                 |  
-|  数据集   |                      |  x的起始点             |    
-| epochs   |                      |  迭代周期              |    
-| param    |                      |                       |       
-| ---------|----------------------|-----------------------|
-
-Created on Fri Nov 19 10:23:27 2018
+Created on Fri Nov 21 2018
 """
 
 """
@@ -31,7 +21,7 @@ import pandas as pd
 from numpy import *
 from decimal import Decimal
 
-# 载入数据，数据类型：一维数据
+# 载入数据，type: 1-D list
 def loadData(): 
     x = [0,1,2, 3, 4, 5,6,7,8, 9]
     y = [1,1,1,-1,-1,-1,1,1,1,-1]
@@ -41,17 +31,20 @@ def get_Gmx(x,y,D,fx):
     """
     函数功能：学习新的分类器
 
-    @param:x
-    @param:y
-    @param:D
-    @param:fx 已有分类器，格式[[a1,G1],...,[am,Gm]]
+    @param:x  数据 type: 1-D list
+    @param:y  标签 type: 1-D list
+    @param:D  权值分布 type: 1-D list
+    @param:fx 已有分类器，格式[[a1,±G1],...,[am,Gm]]
+              注意：有两种分类器[1,-1],[-1,1]
+                +Gm：if x < Gm: y = 1  
+                -Gm：if x < Gm: y = -1
     """
     
-    # 学习新的分类器
+    '学习新的分类器'
     gmx = []  #所有可能的基学习器
-    err_base = []
-    # 1，-1基分类器
-    pred_new = [0]*len(y) # 新分类器的预测结果
+    err_base = []  #所有可能的基学习器 对应的误差
+
+    # 1，-1基分类器  
     pred_new_base = [] #新基学习器的预测结果
     for j in range(len(x) - 1):
         gmx.append(0.5*(x[j] + x[j+1]))
@@ -65,11 +58,10 @@ def get_Gmx(x,y,D,fx):
         if not err: break  # 如果直接找到了分类错误为0的基分类器就不再往下找了
         err_base.append(err) # 更新基学习器的误差 list
     # -1，1基分类器
-    pred_new = [0]*len(y) # 新分类器的预测结果
     pred_new_base = [] #新基学习器的预测结果
     for j in range(len(x) - 1):
-        gmx.append(0.5*(x[j] + x[j+1]))
-        pred_new_base = [-1]*int(math.ceil(gmx[j])) + [1]*int(len(x) - math.ceil(gmx[j]))
+        gmx.append(-0.5*(x[j] + x[j+1]))
+        pred_new_base = [-1]*int(math.ceil(-gmx[j+len(x)-1])) + [1]*int(len(x) - math.ceil(-gmx[j+len(x)-1]))
         # 预测误差em为预测错误项的权重值之和。预测结果和 y 相乘，为-1的元素（异号）即代表着预测错误
         compare_pred_y = list(map(lambda x: x[0]*x[1], zip(pred_new_base,y)))
         # 根据err_list 为 -1的元素的索引，取得对应权重 D 的值并求和
@@ -79,24 +71,27 @@ def get_Gmx(x,y,D,fx):
         if not err: break  # 如果直接找到了分类错误为0的基分类器就不再往下找了
         err_base.append(err) # 更新基学习器的误差 list
     # 选择基学习器Gm，坑在这里，摔了好几跤哇
-    # 错误思路❌：选择最小误差对应的分割，废话，2.5和8.5分的最好，肯定每次都选到这两个，于是就陷入了这两个基学习器狂刷存在感的僵局
-    # 错误思路❌：误差最小的基分类器，实际上应该是误差最小的新分类器
+    # 错误思路❌：每次选择最小误差对应的分类器，没有排除掉已经被选择过的基学习器，废话，2.5和8.5分的最好，肯定每次都选到这两个，于是就陷入了这两个基学习器狂刷存在感的僵局
     
-    # TODO：忽略这里还要忽略掉是[1,-1]分类器还是[-1,1]分类器，然后就在已排序 &忽略已用过的 gmx 中选择第一个作为最新的基学习器
-    # 忽略已经被选择过的基学习器
-    gmx_uniq = gmx
-    err_base_uniq = err_base  # 新的基分类器的误差
+    print(gmx,err_base)
+    '忽略已经被选择过的基学习器'
+    p = 0 # p 误差最小的基分类器的在 gmx 中的索引。从第一个开始，当是已经被选择的分类器时，就跳过
     sorted_err = np.argsort(err_base)
+    # 如果已经没有基学习器可以选择了
+    if len(fx) >= len(gmx): return fx
+    print(gmx)
     if fx:
         for n in range(len(fx)):
-            if fx[n][1] == gmx[sorted_err[n]]:
-                gmx_uniq = gmx.pop(sorted_err[n])
-                err_base_uniq = err_base.pop(sorted_err[n])
+            if fx[n][1] != gmx[sorted_err[n]]:
+                p = n
     
+    '得到 新分类器fx'
+    Gmx = gmx[sorted_err[p]]  # 新的基学习器
+    em = err_base[sorted_err[p]]  # 新的基学习器的误差
     am_new = 1/2 * math.log((1-em)/em)
     am_new = int(am_new*10000)/10000 #保留四位小数
     fx.append([am_new,Gmx]) # 新分类器
-    # 计算新分类的预测结果
+    '计算新分类的预测结果'
     pred_fx_new = [0]*len(y)
     pred_Gm = []#每一个基学习器的预测结果
     # 计算每一个已有的基学习器预测结果pred_am 并和 已有的分类器 fx 预测结果pred_fx 累加
@@ -114,12 +109,11 @@ def calW(D_old,am,y,y_Gmx):
     Zm = sum(Zm_item)
     # 控制精度为五位数，round 不好用，round(13.949999999999999,2) = 13.949999999999999
     D_new = [int(i/Zm*100000)/100000 for i in Zm_item]
-#    D_new = [Decimal(i/Zm).quantize(Decimal('0.0000')) for i in Zm_item]
     return D_new
     
 # 参数：x_list,y_list,maxIterNum:基学习器数量,errorThreshold:分类器误差阈值
 def AdaBoost(x,y,maxIterNum,errorThreshold):
-    D1 = [1.0/len(x)]*len(x)
+    D1 = [1.0/len(x)]*len(x) # 初始权值分布
     fx_err = 0
     D = D1
     fx = []
@@ -134,31 +128,10 @@ def AdaBoost(x,y,maxIterNum,errorThreshold):
         if err_fx < errorThreshold:break
         am = fx[-1][0]
         D = calW(D,am,y,y_fx)
-        
     return fx
     
-
 if __name__ == '__main__':
     x, y = loadData()
-    Gx = AdaBoost(x,y,maxIterNum = 10,errorThreshold = 0.01)
-    print(Gx)
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
+    Gx = AdaBoost(x,y,maxIterNum = 80,errorThreshold = 0.01)
+#    print(Gx)   
 
-    
