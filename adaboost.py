@@ -16,8 +16,8 @@ from decimal import Decimal
 # 载入数据，type: 1-D list
 def loadData(): 
     x = [0,1,2, 3, 4, 5,6,7,8, 9]
-    y = [-1,-1,-1,-1,-1,1,-1,1,1,1]
-#    y = [1,1,1,-1,-1,-1,1,1,1,-1]
+#    y = [1,1,1,1,1,-1,1,-1,-1,-1] # 测试
+    y = [1,1,1,-1,-1,-1,1,1,1,-1]
     return x, y #返回数据特征和数据类别
 
 def get_Gmx(x,y,D,fx):
@@ -69,7 +69,6 @@ def get_Gmx(x,y,D,fx):
     # 错误思路❌：每次选择最小误差对应的分类器，没有排除掉已经被选择过的基学习器，废话，2.5和8.5分的最好，肯定每次都选到这两个，于是就陷入了这两个基学习器狂刷存在感的僵局
     '忽略已经被选择过的基学习器'
     sorted_err = np.argsort(err_base)
-    print(sorted_err)
     p = sorted_err[0] # p 误差最小的基分类器的在 gmx 中的索引。从第一个开始，当是已经被选择的分类器时，就跳过
 #    print(gmx,err_base,sorted_err)
 
@@ -82,6 +81,7 @@ def get_Gmx(x,y,D,fx):
     '得到 新分类器fx'
     Gmx = gmx[p]  # 新的基学习器  #坑 ⭕️  sorted_err[p]
     em = err_base[p]  # 新的基学习器的误差
+    print(em)
     am_new = 1/2 * math.log((1-em)/em)
     am_new = int(am_new*10000)/10000 #保留四位小数
     fx.append([am_new,Gmx]) # 新分类器
@@ -145,7 +145,7 @@ def AdaBoost(x,y,maxIterNum,errorThreshold):
 if __name__ == '__main__':
     x, y = loadData()
     Gx = AdaBoost(x,y,maxIterNum = 8,errorThreshold = 0.01)
-    print(Gx)   
+    print('\nthe form of classifier :[[a1,G1],[a1,G2],...,[am,Gm]]','\n\n',Gx)   
     
 """
 little thoughts：
@@ -156,10 +156,11 @@ little thoughts：
 怎么有点像投资组合，你有投基金啊活期定期啊股票啊，才有优化组合这个事。
 """
 
-"""注意⭕️：AdaBoost 是不是稳定的算法：
+"""注意⭕️：AdaBoost 不是稳定的算法：
 当第一次同时出现两个误差并列最小即2.5和8.5时，
 李航《统计学习方法》P140 例8.1选择的是2.5，于是三次就得到了误差为0的分类器
-本算法选择的是8.5，但第二次就选择了2.5（所以说对于同一时间出现的两个误差相同的基分类器，会依次选中它们，不会错过。）
+本算法选择的是8.5，但第二次选择了2.5
+得到的分类器并不是相同的
 
 实验：改变标签使得当第一次有三个同样误差最小的基学习器，看最后是怎样
 y = [-1,-1,-1,-1,-1,1,-1,1,1,1]
@@ -171,6 +172,7 @@ fx = [[1.0986, -6.5], [1.4166, -4.5], [0.5893, 5.5]]
 目前认为是不稳定的。
 ⭕️：问老大：Google 不到和 AdaBoost 相关的内容
 """
+
 """
 注意⭕️
 所有基学习器一共18种，每种基学习器的预测标签是确定的，所以预测正确率一定，而根据 P139 公式(8.8)可知，它们的分类误差和权值矩阵有关系⭕️
